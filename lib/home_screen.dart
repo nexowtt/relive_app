@@ -10,28 +10,58 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F9FF),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text(
-          'ReLive',
-          style: TextStyle(
-            color: Color(0xFF9D84FF),
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF9D84FF), Color(0xFF6C63FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'ReLive',
+              style: TextStyle(
+                color: Color(0xFF2D2B3A),
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline, color: Colors.black54),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfileScreen()),
-              );
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.grey.shade200, width: 2),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.person_2_outlined, color: Color(0xFF6C63FF)),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -41,89 +71,294 @@ class HomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Приветствие с датой
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'ГЛАВНАЯ',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _getCurrentDate(),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
+            _buildWelcomeSection(),
             
             const SizedBox(height: 40),
             
             // Основные разделы
-            _buildSectionCard(
-              context,
-              'МОИ ВОСПОМИНАНИЯ',
-              Icons.photo_library_outlined,
-              const Color(0xFF9D84FF),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MemoriesScreen()),
-                );
-              },
+            Expanded(
+              child: Column(
+                children: [
+                  _buildSectionCard(
+                    context,
+                    'МОИ ВОСПОМИНАНИЯ',
+                    Icons.photo_library_outlined,
+                    [const Color(0xFF9D84FF), const Color(0xFF6C63FF)],
+                    Icons.auto_awesome,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MemoriesScreen()),
+                      );
+                    },
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  _buildSectionCard(
+                    context,
+                    'ЛЮБИМЫЕ МОМЕНТЫ',
+                    Icons.favorite_outline,
+                    [const Color(0xFFFF6B95), const Color(0xFFFF8E6C)],
+                    Icons.stars_rounded,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const FavoriteMomentsScreen()),
+                      );
+                    },
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  _buildSectionCard(
+                    context,
+                    'КАПСУЛА ВРЕМЕНИ',
+                    Icons.hourglass_empty_rounded,
+                    [const Color(0xFF61C3FF), const Color(0xFF6C63FF)],
+                    Icons.bolt_rounded,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const TimeCapsuleScreen()),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
-            
-            const SizedBox(height: 20),
-            
-            _buildSectionCard(
-              context,
-              'ЛЮБИМЫЕ МОМЕНТЫ',
-              Icons.favorite_outline,
-              const Color(0xFF6C63FF),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const FavoriteMomentsScreen()),
-                );
-              },
-            ),
-            
-            const SizedBox(height: 20),
-            
-            _buildSectionCard(
-              context,
-              'КАПСУЛА ВРЕМЕНИ',
-              Icons.time_to_leave_outlined,
-              const Color(0xFFB79CFF),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const TimeCapsuleScreen()),
-                );
-              },
-            ),
-            
-            const Spacer(),
             
             // Footer информация
-            const Center(
-              child: Text(
-                'ReLive - Make your memories eternal',
+            _buildFooter(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'ГЛАВНАЯ',
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2D2B3A),
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _getCurrentDate(),
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: 60,
+          height: 4,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF9D84FF), Color(0xFF6C63FF)],
+            ),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionCard(
+    BuildContext context,
+    String title,
+    IconData icon,
+    List<Color> gradientColors,
+    IconData decorativeIcon, {
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+          height: 120,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: gradientColors[0].withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Декоративные элементы
+              Positioned(
+                top: -10,
+                right: -10,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: -20,
+                left: -20,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              
+              // Контент
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.8,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                decorativeIcon,
+                                color: Colors.white.withOpacity(0.8),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _getSectionSubtitle(title),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        Container(
+          height: 1,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.grey.shade300,
+                Colors.grey.shade100,
+                Colors.grey.shade300,
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'ReLive - Make your memories eternal',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF9D84FF), Color(0xFF6C63FF)],
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'v1.0.0',
                 style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
@@ -133,56 +368,20 @@ class HomeScreen extends StatelessWidget {
       'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
       'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
     ];
-    return '${now.day} ${months[now.month - 1]} ${now.year}';
+    final days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    return '${now.day} ${months[now.month - 1]} ${now.year} • ${days[now.weekday - 1]}';
   }
 
-  Widget _buildSectionCard(BuildContext context, String title, IconData icon, Color color, {required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: 100,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: color.withAlpha(77),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 24),
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 36,
-            ),
-            const SizedBox(width: 20),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const Spacer(),
-            const Padding(
-              padding: EdgeInsets.only(right: 20),
-              child: Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  String _getSectionSubtitle(String title) {
+    switch (title) {
+      case 'МОИ ВОСПОМИНАНИЯ':
+        return 'Все ваши моменты';
+      case 'ЛЮБИМЫЕ МОМЕНТЫ':
+        return 'Самые яркие воспоминания';
+      case 'КАПСУЛА ВРЕМЕНИ':
+        return 'Сохраните на будущее';
+      default:
+        return 'Исследуйте';
+    }
   }
 }
