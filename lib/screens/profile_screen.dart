@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../services/memory_service.dart';
-import '../models/memory.dart';
-import '../welcome_screen.dart';
-import '../services/time_capsule_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:relive_app/app_auth_provider.dart';
+import 'package:relive_app/welcome_screen.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,33 +13,36 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final MemoryService _memoryService = MemoryService();
-  final TimeCapsuleService _capsuleService = TimeCapsuleService();
-  List<Memory> _memories = [];
-  List<Memory> _favoriteMemories = [];
-  List<dynamic> _capsules = [];
+  // final MemoryService _memoryService = MemoryService();
+  // final TimeCapsuleService _capsuleService = TimeCapsuleService();
+  // List<Memory> _memories = [];
+  // List<Memory> _favoriteMemories = [];
+  // List<dynamic> _capsules = [];
 
   @override
   void initState() {
     super.initState();
-    _loadStatistics();
+    // _loadStatistics();
   }
 
-  Future<void> _loadStatistics() async {
-    final memories = await _memoryService.getMemories();
-    final favorites = await _memoryService.getFavoriteMemories();
-    final capsules = await _capsuleService.getCapsules();
+  // Future<void> _loadStatistics() async {
+  //   // Ваш код загрузки статистики
+  //   // final memories = await _memoryService.getMemories();
+  //   // final favorites = await _memoryService.getFavoriteMemories();
+  //   // final capsules = await _capsuleService.getCapsules();
     
-    if (mounted) {
-      setState(() {
-        _memories = memories;
-        _favoriteMemories = favorites;
-        _capsules = capsules;
-      });
-    }
-  }
+  //   if (mounted) {
+  //     setState(() {
+  //       // _memories = memories;
+  //       // _favoriteMemories = favorites;
+  //       // _capsules = capsules;
+  //     });
+  //   }
+  // }
 
-  void _logout(BuildContext context) {
+  void _logout(BuildContext context) async {
+    final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -107,11 +111,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).popUntil((route) => route.isFirst);
-                          Navigator.pushReplacement(
+                        onPressed: () async {
+                          // Закрываем диалог
+                          Navigator.of(context).pop();
+                          
+                          // Выполняем выход
+                          await authProvider.signOut();
+                          
+                          // Переходим на экран приветствия с очисткой истории
+                          Navigator.pushAndRemoveUntil(
                             context,
                             MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                            (route) => false,
                           );
                         },
                         style: ElevatedButton.styleFrom(
@@ -138,6 +149,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FF),
       body: CustomScrollView(
@@ -180,22 +193,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  // Аватар и основная информация
-                  _buildProfileHeader(),
+                  _buildProfileHeader(user),
                   
                   const SizedBox(height: 32),
                   
-                  // Статистика
-                  _buildStatistics(),
+                  // _buildStatistics(), // Раскомментируйте когда добавите сервисы
                   
-                  const SizedBox(height: 32),
+                  // const SizedBox(height: 32),
                   
-                  // Настройки
                   _buildSettingsSection(),
                   
                   const SizedBox(height: 32),
                   
-                  // Информация о приложении
                   _buildAppInfoSection(context),
                   
                   const SizedBox(height: 40),
@@ -208,7 +217,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileHeader() {
+  Widget _buildProfileHeader(User? user) {
+    final email = user?.email ?? 'user@relive.com';
+    final displayName = user?.email?.split('@').first ?? 'Пользователь ReLive';
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -228,7 +240,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          // Аватар
           Stack(
             children: [
               Container(
@@ -271,10 +282,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           
           const SizedBox(height: 16),
           
-          // Имя пользователя
-          const Text(
-            'Пользователь ReLive',
-            style: TextStyle(
+          Text(
+            displayName,
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -284,9 +294,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 8),
           
           // Email
-          const Text(
-            'user@relive.com',
-            style: TextStyle(
+          Text(
+            email,
+            style: const TextStyle(
               fontSize: 16,
               color: Colors.white70,
             ),
@@ -294,10 +304,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           
           const SizedBox(height: 16),
           
-          // Кнопка редактирования профиля
           OutlinedButton(
             onPressed: () {
-              // Будет реализовано позже
+              // TODO: Реализовать редактирование профиля
             },
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
@@ -315,6 +324,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildStatistics() {
+    // Временно закомментировано - раскомментируйте когда добавите сервисы
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -361,19 +371,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _StatItem(
-                count: _memories.length.toString(),
+                count: "0", // _memories.length.toString(),
                 label: 'Воспоминания',
                 gradient: const [Color(0xFF9D84FF), Color(0xFF6C63FF)],
                 icon: Icons.photo_library_rounded,
               ),
               _StatItem(
-                count: _favoriteMemories.length.toString(),
+                count: "0", // _favoriteMemories.length.toString(),
                 label: 'Избранные',
                 gradient: const [Color(0xFFFF6B95), Color(0xFFFF8E6C)],
                 icon: Icons.favorite_rounded,
               ),
               _StatItem(
-                count: _capsules.length.toString(),
+                count: "0", // _capsules.length.toString(),
                 label: 'Капсулы',
                 gradient: const [Color(0xFF61C3FF), Color(0xFF6C63FF)],
                 icon: Icons.hourglass_full_rounded,
@@ -588,7 +598,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// Виджет для элемента статистики
 class _StatItem extends StatelessWidget {
   final String count;
   final String label;

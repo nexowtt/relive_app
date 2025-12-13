@@ -1,0 +1,28 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "relive-e591f",
+          "appId": "1:731566592192:android:4c7535db8e802afb851d25",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "relive-e591f",
+          "configurations": {
+            "android": "1:731566592192:android:4c7535db8e802afb851d25",
+            "ios": "1:731566592192:ios:a78b058d2762a719851d25",
+            "macos": "1:731566592192:ios:a78b058d2762a719851d25",
+            "web": "1:731566592192:web:a962b762b51d8079851d25",
+            "windows": "1:731566592192:web:ae4ab9581150277e851d25"
+          }
+        }
+      }
+    }
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

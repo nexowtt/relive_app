@@ -1,4 +1,4 @@
-// models/memory.dart
+// lib/models/memory.dart
 class Memory {
   final String id;
   final String title;

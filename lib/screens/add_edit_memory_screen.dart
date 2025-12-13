@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:provider/provider.dart';
 import '../models/memory.dart';
 import '../services/memory_service.dart';
 
@@ -24,12 +25,18 @@ class AddEditMemoryScreen extends StatefulWidget {
 class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _memoryService = MemoryService();
+  late MemoryService _memoryService;
   final List<File> _selectedImages = [];
   final List<String> _existingImagePaths = [];
   DateTime _selectedDate = DateTime.now();
   bool _isSaving = false;
   final ImagePicker _imagePicker = ImagePicker();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _memoryService = Provider.of<MemoryService>(context, listen: false);
+  }
 
   @override
   void initState() {
@@ -41,6 +48,186 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
       _existingImagePaths.addAll(widget.memory!.imagePaths);
     }
   }
+
+  // Локальное сохранение изображений
+  Future<List<String>> _saveImagesLocally() async {
+    print('💾 === ЛОКАЛЬНОЕ СОХРАНЕНИЕ ИЗОБРАЖЕНИЙ ===');
+    
+    final List<String> savedPaths = [];
+    final appDir = await getApplicationDocumentsDirectory();
+    final memoryDir = Directory('${appDir.path}/memories');
+
+    // Создаем директорию если не существует
+    if (!await memoryDir.exists()) {
+      await memoryDir.create(recursive: true);
+      print('📁 Создана директория: ${memoryDir.path}');
+    }
+
+    for (int i = 0; i < _selectedImages.length; i++) {
+      final imageFile = _selectedImages[i];
+      
+      try {
+        // Проверяем, существует ли файл
+        final exists = await imageFile.exists();
+        if (!exists) {
+          print('⚠️ Файл $i не существует: ${imageFile.path}');
+          continue;
+        }
+        
+        // Получаем размер файла
+        final fileSize = await imageFile.length();
+        print('📏 Размер файла $i: ${fileSize} байт');
+        
+        // Генерируем уникальное имя
+        final timestamp = DateTime.now().millisecondsSinceEpoch + i;
+        final random = DateTime.now().microsecondsSinceEpoch % 10000;
+        final fileName = 'memory_${timestamp}_$random.jpg';
+        final savePath = path.join(memoryDir.path, fileName);
+        
+        print('📸 Копирую фото $i:');
+        print('   📁 Из: ${imageFile.path}');
+        print('   📁 В: $savePath');
+        
+        // Копируем файл
+        final savedFile = await imageFile.copy(savePath);
+        
+        // Проверяем результат
+        final savedExists = await savedFile.exists();
+        final savedSize = await savedFile.length();
+        
+        if (savedExists) {
+          savedPaths.add(savedFile.path);
+          print('✅ Фото $i сохранено успешно');
+          print('   ✅ Путь: ${savedFile.path}');
+          print('   ✅ Размер после сохранения: ${savedSize} байт');
+        } else {
+          print('❌ Фото $i не скопировалось');
+        }
+        
+      } catch (e) {
+        print('❌ Ошибка при сохранении фото $i: $e');
+      }
+    }
+
+    print('💾 === УСПЕШНО СОХРАНЕНО: ${savedPaths.length} из ${_selectedImages.length} ===');
+    return savedPaths;
+  }
+
+  Future<void> _saveMemory() async {
+    print('🔍 === НАЧАЛО СОХРАНЕНИЯ ВОСПОМИНАНИЯ ===');
+    print('📝 Заголовок: ${_titleController.text}');
+    print('📝 Описание: ${_descriptionController.text}');
+    print('📅 Дата: $_selectedDate');
+    print('🖼️ Выбрано новых фото: ${_selectedImages.length}');
+    print('🖼️ Существующие фото: ${_existingImagePaths.length}');
+    print('👤 Пользователь: ${_memoryService.getCurrentUserId()}');
+
+    if (_titleController.text.isEmpty) {
+      _showErrorDialog('Введите заголовок воспоминания');
+      return;
+    }
+
+    if (_isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      List<String> newImagePaths = [];
+      
+      // Сохраняем новые изображения локально
+      if (_selectedImages.isNotEmpty) {
+        print('📤 Сохраняю ${_selectedImages.length} новых изображений...');
+        newImagePaths = await _saveImagesLocally();
+      } else {
+        print('📤 Новых изображений нет, пропускаю сохранение');
+      }
+      
+      // Объединяем существующие и новые пути
+      final allImagePaths = [..._existingImagePaths, ...newImagePaths];
+      print('🖼️ Всего путей к изображениям: ${allImagePaths.length}');
+      
+      // Проверяем существование файлов
+      for (int i = 0; i < allImagePaths.length; i++) {
+        final file = File(allImagePaths[i]);
+        final exists = await file.exists();
+        print('   ${exists ? '✅' : '❌'} Файл $i: ${allImagePaths[i]}');
+      }
+
+      // Создаем объект Memory
+      final memory = Memory(
+        id: widget.memory?.id ?? '', // Пустой ID для новых воспоминаний
+        title: _titleController.text,
+        description: _descriptionController.text,
+        date: _selectedDate,
+        imagePaths: allImagePaths, // Локальные пути к файлам
+        isFavorite: widget.memory?.isFavorite ?? false,
+        createdAt: widget.memory?.createdAt ?? DateTime.now(),
+      );
+
+      print('🚀 Сохраняю в Firestore...');
+      final success = await _memoryService.saveMemory(memory);
+      
+      if (mounted) {
+        if (success) {
+          print('🎉 ВОСПОМИНАНИЕ УСПЕШНО СОХРАНЕНО!');
+          
+          // Показываем уведомление об успехе
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Сохранено с ${allImagePaths.length} фото'),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          
+          widget.onSave();
+          Navigator.pop(context);
+        } else {
+          print('❌ MemoryService вернул false при сохранении');
+          
+          // Удаляем сохраненные фото (откат изменений)
+          for (final path in newImagePaths) {
+            try {
+              final file = File(path);
+              if (await file.exists()) {
+                await file.delete();
+                print('🗑️ Удален файл после ошибки: $path');
+              }
+            } catch (e) {
+              print('⚠️ Не удалось удалить файл $path: $e');
+            }
+          }
+          
+          _showErrorDialog('Не удалось сохранить воспоминание в базу данных');
+        }
+      }
+    } catch (e) {
+      print('❌ КРИТИЧЕСКАЯ ОШИБКА В _saveMemory:');
+      print('❌ Тип ошибки: ${e.runtimeType}');
+      print('❌ Сообщение: ${e.toString()}');
+      
+      if (mounted) {
+        _showErrorDialog('Ошибка при сохранении: ${e.toString()}');
+      }
+    } finally {
+      print('🔍 === КОНЕЦ ПРОЦЕССА СОХРАНЕНИЯ ===');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  // --- СТАРЫЕ МЕТОДЫ (остаются без изменений) ---
 
   Future<void> _pickImageFromGallery() async {
     try {
@@ -154,87 +341,6 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
     });
   }
 
-  Future<void> _saveMemory() async {
-    if (_titleController.text.isEmpty) {
-      _showErrorDialog('Введите заголовок воспоминания');
-      return;
-    }
-
-    if (_isSaving) return;
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    try {
-      // Сохраняем новые изображения
-      final List<String> newImagePaths = await _saveImagesToStorage();
-      
-      // Объединяем существующие и новые пути
-      final allImagePaths = [..._existingImagePaths, ...newImagePaths];
-
-      final memory = Memory(
-        id: widget.memory?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        title: _titleController.text,
-        description: _descriptionController.text,
-        date: _selectedDate,
-        imagePaths: allImagePaths,
-        isFavorite: widget.memory?.isFavorite ?? false,
-        createdAt: widget.memory?.createdAt ?? DateTime.now(),
-      );
-
-      final success = await _memoryService.saveMemory(memory);
-      
-      if (mounted) {
-        if (success) {
-          widget.onSave();
-          Navigator.pop(context);
-        } else {
-          _showErrorDialog('Ошибка при сохранении воспоминания');
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        _showErrorDialog('Ошибка: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
-    }
-  }
-
-  Future<List<String>> _saveImagesToStorage() async {
-    final List<String> savedPaths = [];
-
-    for (final imageFile in _selectedImages) {
-      try {
-        final String fileName = 'memory_${DateTime.now().millisecondsSinceEpoch}_${_selectedImages.indexOf(imageFile)}.jpg';
-        final String savePath = await _getLocalImagePath(fileName);
-        
-        // Создаем директорию если не существует
-        final Directory dir = Directory(path.dirname(savePath));
-        if (!await dir.exists()) {
-          await dir.create(recursive: true);
-        }
-        
-        final File savedFile = await imageFile.copy(savePath);
-        savedPaths.add(savedFile.path);
-      } catch (e) {
-        print('Ошибка сохранения изображения: $e');
-      }
-    }
-
-    return savedPaths;
-  }
-
-  Future<String> _getLocalImagePath(String fileName) async {
-    final directory = await getApplicationDocumentsDirectory();
-    return path.join(directory.path, 'memories', fileName);
-  }
-
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -283,7 +389,7 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF6B6B).withAlpha(20),
+                    color: const Color(0xFFFF6B6B).withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -335,7 +441,9 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
   void _onBackPressed() {
     if (_isSaving) return;
     
-    if (_titleController.text.isNotEmpty || _descriptionController.text.isNotEmpty || _selectedImages.isNotEmpty) {
+    if (_titleController.text.isNotEmpty || 
+        _descriptionController.text.isNotEmpty || 
+        _selectedImages.isNotEmpty) {
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -357,7 +465,7 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFA726).withAlpha(20),
+                      color: const Color(0xFFFFA726).withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -619,7 +727,7 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: const Color(0xFF9D84FF).withAlpha(30),
+              color: const Color(0xFF9D84FF).withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -804,7 +912,7 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF9D84FF).withAlpha(20),
+                                  color: const Color(0xFF9D84FF).withOpacity(0.1),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -909,7 +1017,7 @@ class _ImageSourceButton extends StatelessWidget {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: color.withAlpha(30),
+            color: color.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: IconButton(

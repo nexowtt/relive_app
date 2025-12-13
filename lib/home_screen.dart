@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/memories_screen.dart';
 import 'screens/favorite_moments_screen.dart';
 import 'screens/profile_screen.dart';
@@ -9,6 +10,8 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FF),
       appBar: AppBar(
@@ -47,22 +50,25 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey.shade200, width: 2),
+          if (user != null) ...[
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.grey.shade200, width: 2),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.person_2_outlined, color: Color(0xFF6C63FF)),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                  );
+                },
+              ),
             ),
-            child: IconButton(
-              icon: const Icon(Icons.person_2_outlined, color: Color(0xFF6C63FF)),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                );
-              },
-            ),
-          ),
+            // УБРАЛИ КНОПКУ ВЫХОДА ОТСЮДА
+          ],
         ],
       ),
       body: Padding(
@@ -71,7 +77,7 @@ class HomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Приветствие с датой
-            _buildWelcomeSection(),
+            _buildWelcomeSection(user),
             
             const SizedBox(height: 40),
             
@@ -136,13 +142,13 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWelcomeSection() {
+  Widget _buildWelcomeSection(User? user) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'ГЛАВНАЯ',
-          style: TextStyle(
+        Text(
+          user != null ? 'ДОБРО ПОЖАЛОВАТЬ' : 'ГЛАВНАЯ',
+          style: const TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
             color: Color(0xFF2D2B3A),
@@ -150,6 +156,17 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
+        if (user != null) ...[
+          Text(
+            'Привет, ${user.email?.split('@').first ?? 'Пользователь'}!',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
         Text(
           _getCurrentDate(),
           style: TextStyle(
@@ -198,7 +215,7 @@ class HomeScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: gradientColors[0].withOpacity(0.3),
+                color: gradientColors[0].withAlpha(77),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -214,7 +231,7 @@ class HomeScreen extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withAlpha(25),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -226,7 +243,7 @@ class HomeScreen extends StatelessWidget {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withAlpha(25),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -241,7 +258,7 @@ class HomeScreen extends StatelessWidget {
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withAlpha(50),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Icon(
@@ -271,14 +288,14 @@ class HomeScreen extends StatelessWidget {
                             children: [
                               Icon(
                                 decorativeIcon,
-                                color: Colors.white.withOpacity(0.8),
+                                color: Colors.white.withAlpha(200),
                                 size: 16,
                               ),
                               const SizedBox(width: 6),
                               Text(
                                 _getSectionSubtitle(title),
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withAlpha(200),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -292,7 +309,7 @@ class HomeScreen extends StatelessWidget {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withAlpha(50),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(

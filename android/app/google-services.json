@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "731566592192",
+    "project_id": "relive-e591f",
+    "storage_bucket": "relive-e591f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:731566592192:android:9d2ac0db959c1cab851d25",
+        "android_client_info": {
+          "package_name": "com.example.relive"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "731566592192-lnh8bc32sgl0359norap592o8p01505i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.relive",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa64a41438d35"
+          }
+        },
+        {
+          "client_id": "731566592192-kadekikv9sbks6dc7be4urgk4f89o57v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhFIlYlJIPOuq6C-4DJJYig7-cZ8bzbg8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "731566592192-kadekikv9sbks6dc7be4urgk4f89o57v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "731566592192-iqlhrf4g9s3l0ssds5qss96b4ri0in88.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.reliveApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:731566592192:android:4c7535db8e802afb851d25",
+        "android_client_info": {
+          "package_name": "com.example.relive_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "731566592192-kadekikv9sbks6dc7be4urgk4f89o57v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhFIlYlJIPOuq6C-4DJJYig7-cZ8bzbg8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "731566592192-kadekikv9sbks6dc7be4urgk4f89o57v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "731566592192-iqlhrf4g9s3l0ssds5qss96b4ri0in88.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.reliveApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
