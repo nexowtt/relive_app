@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/memory.dart';
 import '../services/memory_service.dart';
 import 'add_edit_memory_screen.dart';
-import 'dart:io'; // Добавлен импорт
+import 'favorite_moments_screen.dart'; // Добавлен импорт экрана избранного
+import 'dart:io';
 
 class MemoriesScreen extends StatefulWidget {
   const MemoriesScreen({super.key});
@@ -93,7 +94,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
   }
 
   void _editMemory(Memory memory) {
-    // Блокируем редактирование во время поиска
     if (_isSearching) return;
     
     Navigator.push(
@@ -107,8 +107,19 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
     );
   }
 
+  // Добавляем метод для перехода к избранным
+  void _goToFavorites() {
+    if (_isSearching) return;
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const FavoriteMomentsScreen(),
+      ),
+    );
+  }
+
   Future<void> _toggleFavorite(Memory memory) async {
-    // Блокируем добавление в избранное во время поиска
     if (_isSearching) return;
     
     await _memoryService.toggleFavorite(memory.id);
@@ -118,7 +129,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
   }
 
   Future<void> _deleteMemory(Memory memory) async {
-    // Блокируем удаление во время поиска
     if (_isSearching) return;
     
     final shouldDelete = await showDialog<bool>(
@@ -263,23 +273,47 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
             centerTitle: true,
             actions: [
               if (!_isSearching)
-                Container(
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                Row(
+                  children: [
+                    // Кнопка избранного
+                    Container(
+                      margin: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.search_rounded, color: Colors.black54),
-                    onPressed: _startSearch,
-                  ),
+                      child: IconButton(
+                        icon: const Icon(Icons.favorite_rounded, color: Color(0xFFFF6B6B)),
+                        onPressed: _goToFavorites,
+                      ),
+                    ),
+                    // Кнопка поиска
+                    Container(
+                      margin: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.search_rounded, color: Colors.black54),
+                        onPressed: _startSearch,
+                      ),
+                    ),
+                  ],
                 ),
             ],
             pinned: true,
@@ -503,209 +537,210 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
       ],
     );
   }
-Widget _buildMemoryCard(Memory memory) {
-  return Material(
-    color: Colors.transparent,
-    child: InkWell(
-      onTap: () => _editMemory(memory),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // Декоративный элемент
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF9D84FF).withAlpha(10),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(20),
-                    bottomLeft: Radius.circular(30),
+
+  Widget _buildMemoryCard(Memory memory) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _editMemory(memory),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Декоративный элемент
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF9D84FF).withAlpha(10),
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(20),
+                      bottomLeft: Radius.circular(30),
+                    ),
                   ),
                 ),
               ),
-            ),
-            
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Заголовок и кнопка избранного
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              memory.title,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatDate(memory.date),
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: memory.isFavorite 
-                              ? const Color(0xFFFF6B6B).withAlpha(20)
-                              : Colors.grey.withAlpha(20),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            memory.isFavorite 
-                                ? Icons.favorite_rounded 
-                                : Icons.favorite_border_rounded,
-                            color: memory.isFavorite 
-                                ? const Color(0xFFFF6B6B)
-                                : Colors.grey,
-                            size: 20,
-                          ),
-                          onPressed: () => _toggleFavorite(memory),
-                          padding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Описание
-                  Text(
-                    memory.description,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black87,
-                      height: 1.4,
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Фотографии (превью)
-                  if (memory.imagePaths.isNotEmpty) ...[
-                    SizedBox(
-                      height: 80,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: memory.imagePaths.length,
-                        itemBuilder: (context, index) {
-                          return Container(
-                            width: 80,
-                            height: 80,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Заголовок и кнопка избранного
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                memory.title,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
                                 ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.file(
-                                File(memory.imagePaths[index]),
-                                width: 80,
-                                height: 80,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [Color(0xFF9D84FF), Color(0xFF6C63FF)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.photo_rounded,
-                                        color: Colors.white,
-                                        size: 30,
-                                      ),
-                                    ),
-                                  );
-                                },
                               ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _formatDate(memory.date),
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: memory.isFavorite 
+                                ? const Color(0xFFFF6B6B).withAlpha(20)
+                                : Colors.grey.withAlpha(20),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              memory.isFavorite 
+                                  ? Icons.favorite_rounded 
+                                  : Icons.favorite_border_rounded,
+                              color: memory.isFavorite 
+                                  ? const Color(0xFFFF6B6B)
+                                  : Colors.grey,
+                              size: 20,
                             ),
-                          );
-                        },
+                            onPressed: () => _toggleFavorite(memory),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Описание
+                    Text(
+                      memory.description,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                        height: 1.4,
                       ),
                     ),
+                    
                     const SizedBox(height: 16),
-                  ],
-                  
-                  // Кнопка удаления
-                  Row(
-                    children: [
-                      const Spacer(),
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withAlpha(20),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline_rounded,
-                            color: Colors.grey,
-                            size: 20,
-                          ),
-                          onPressed: () => _deleteMemory(memory),
-                          padding: EdgeInsets.zero,
+                    
+                    // Фотографии (превью)
+                    if (memory.imagePaths.isNotEmpty) ...[
+                      SizedBox(
+                        height: 80,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: memory.imagePaths.length,
+                          itemBuilder: (context, index) {
+                            return Container(
+                              width: 80,
+                              height: 80,
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  File(memory.imagePaths[index]),
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Color(0xFF9D84FF), Color(0xFF6C63FF)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.photo_rounded,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
+                      const SizedBox(height: 16),
                     ],
-                  ),
-                ],
+                    
+                    // Кнопка удаления
+                    Row(
+                      children: [
+                        const Spacer(),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withAlpha(20),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: Colors.grey,
+                              size: 20,
+                            ),
+                            onPressed: () => _deleteMemory(memory),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
-                  
+    );
+  }
+  
   String _formatDate(DateTime date) {
     final months = [
       'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',

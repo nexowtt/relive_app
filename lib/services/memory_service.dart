@@ -1,6 +1,7 @@
 // services/memory_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/widgets.dart';
 import '../models/memory.dart';
 
 class MemoryService {
@@ -49,25 +50,10 @@ class MemoryService {
   // Получаем избранные воспоминания
   Future<List<Memory>> getFavoriteMemories() async {
     try {
-      final querySnapshot = await _getUserMemoriesCollection()
-          .where('isFavorite', isEqualTo: true)
-          .orderBy('date', descending: true)
-          .get();
-      
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return Memory(
-          id: doc.id,
-          title: data['title'] ?? '',
-          description: data['description'] ?? '',
-          date: (data['date'] as Timestamp).toDate(),
-          imagePaths: List<String>.from(data['imagePaths'] ?? []),
-          isFavorite: true,
-          createdAt: (data['createdAt'] as Timestamp).toDate(),
-        );
-      }).toList();
+      final allMemories = await getMemories();
+      return allMemories.where((memory) => memory.isFavorite).toList();
     } catch (e) {
-      print('❌ Ошибка загрузки избранных воспоминаний: $e');
+      debugPrint('Ошибка при получении избранных воспоминаний: $e');
       return [];
     }
   }
@@ -121,35 +107,36 @@ class MemoryService {
     }
   }
 
-  // Переключаем избранное
-  // Переключаем избранное
+  // Исправленный метод toggleFavorite в memory_service.dart
 Future<bool> toggleFavorite(String id) async {
   try {
-    final memoryRef = _getUserMemoriesCollection().doc(id);
-    final memoryDoc = await memoryRef.get();
+    // Получаем документ
+    final docRef = _getUserMemoriesCollection().doc(id);
+    final doc = await docRef.get();
     
-    if (memoryDoc.exists) {
-      final data = memoryDoc.data();
+    if (doc.exists) {
+      // Явно приводим тип
+      final data = doc.data() as Map<String, dynamic>?;
+      final currentValue = data?['isFavorite'] ?? false;
       
-      // Проверяем и преобразуем тип данных
-      if (data != null && data is Map<String, dynamic>) {
-        final currentFavorite = data['isFavorite'] ?? false;
-        
-        await memoryRef.update({
-          'isFavorite': !currentFavorite,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-        
-        print('✅ Статус избранного изменен');
-        return true;
-      }
+      // Обновляем поле isFavorite
+      await docRef.update({
+        'isFavorite': !currentValue,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      print('✅ Избранное переключено для документа $id: ${!currentValue}');
+      return true;
     }
+    
+    print('❌ Документ с ID $id не найден');
     return false;
   } catch (e) {
-    print('❌ Ошибка изменения избранного в Firebase: $e');
+    debugPrint('Ошибка при переключении избранного: $e');
     return false;
   }
 }
+
   // Получаем Stream для реального времени (все воспоминания)
   Stream<List<Memory>> get memoriesStream {
     return _getUserMemoriesCollection()
