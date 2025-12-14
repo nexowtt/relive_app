@@ -51,7 +51,7 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
 
   // Локальное сохранение изображений
   Future<List<String>> _saveImagesLocally() async {
-    print('💾 === ЛОКАЛЬНОЕ СОХРАНЕНИЕ ИЗОБРАЖЕНИЙ ===');
+    debugPrint('💾 === ЛОКАЛЬНОЕ СОХРАНЕНИЕ ИЗОБРАЖЕНИЙ ===');
     
     final List<String> savedPaths = [];
     final appDir = await getApplicationDocumentsDirectory();
@@ -60,7 +60,7 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
     // Создаем директорию если не существует
     if (!await memoryDir.exists()) {
       await memoryDir.create(recursive: true);
-      print('📁 Создана директория: ${memoryDir.path}');
+      debugPrint('📁 Создана директория: ${memoryDir.path}');
     }
 
     for (int i = 0; i < _selectedImages.length; i++) {
@@ -70,13 +70,13 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
         // Проверяем, существует ли файл
         final exists = await imageFile.exists();
         if (!exists) {
-          print('⚠️ Файл $i не существует: ${imageFile.path}');
+          debugPrint('⚠️ Файл $i не существует: ${imageFile.path}');
           continue;
         }
         
         // Получаем размер файла
         final fileSize = await imageFile.length();
-        print('📏 Размер файла $i: ${fileSize} байт');
+        debugPrint('📏 Размер файла $i: ${fileSize} байт');
         
         // Генерируем уникальное имя
         final timestamp = DateTime.now().millisecondsSinceEpoch + i;
@@ -84,9 +84,9 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
         final fileName = 'memory_${timestamp}_$random.jpg';
         final savePath = path.join(memoryDir.path, fileName);
         
-        print('📸 Копирую фото $i:');
-        print('   📁 Из: ${imageFile.path}');
-        print('   📁 В: $savePath');
+        debugPrint('📸 Копирую фото $i:');
+        debugPrint('   📁 Из: ${imageFile.path}');
+        debugPrint('   📁 В: $savePath');
         
         // Копируем файл
         final savedFile = await imageFile.copy(savePath);
@@ -97,30 +97,30 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
         
         if (savedExists) {
           savedPaths.add(savedFile.path);
-          print('✅ Фото $i сохранено успешно');
-          print('   ✅ Путь: ${savedFile.path}');
-          print('   ✅ Размер после сохранения: ${savedSize} байт');
+          debugPrint('✅ Фото $i сохранено успешно');
+          debugPrint('   ✅ Путь: ${savedFile.path}');
+          debugPrint('   ✅ Размер после сохранения: ${savedSize} байт');
         } else {
-          print('❌ Фото $i не скопировалось');
+          debugPrint('❌ Фото $i не скопировалось');
         }
         
       } catch (e) {
-        print('❌ Ошибка при сохранении фото $i: $e');
+          debugPrint('❌ Ошибка при сохранении фото $i: $e');
       }
     }
 
-    print('💾 === УСПЕШНО СОХРАНЕНО: ${savedPaths.length} из ${_selectedImages.length} ===');
+    debugPrint('💾 === УСПЕШНО СОХРАНЕНО: ${savedPaths.length} из ${_selectedImages.length} ===');
     return savedPaths;
   }
 
   Future<void> _saveMemory() async {
-    print('🔍 === НАЧАЛО СОХРАНЕНИЯ ВОСПОМИНАНИЯ ===');
-    print('📝 Заголовок: ${_titleController.text}');
-    print('📝 Описание: ${_descriptionController.text}');
-    print('📅 Дата: $_selectedDate');
-    print('🖼️ Выбрано новых фото: ${_selectedImages.length}');
-    print('🖼️ Существующие фото: ${_existingImagePaths.length}');
-    print('👤 Пользователь: ${_memoryService.getCurrentUserId()}');
+    debugPrint('🔍 === НАЧАЛО СОХРАНЕНИЯ ВОСПОМИНАНИЯ ===');
+    debugPrint('📝 Заголовок: ${_titleController.text}');
+    debugPrint('📝 Описание: ${_descriptionController.text}');
+    debugPrint('📅 Дата: $_selectedDate');
+    debugPrint('🖼️ Выбрано новых фото: ${_selectedImages.length}');
+    debugPrint('🖼️ Существующие фото: ${_existingImagePaths.length}');
+    debugPrint('👤 Пользователь: ${_memoryService.getCurrentUserId()}');
 
     if (_titleController.text.isEmpty) {
       _showErrorDialog('Введите заголовок воспоминания');
@@ -138,21 +138,21 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
       
       // Сохраняем новые изображения локально
       if (_selectedImages.isNotEmpty) {
-        print('📤 Сохраняю ${_selectedImages.length} новых изображений...');
+        debugPrint('📤 Сохраняю ${_selectedImages.length} новых изображений...');
         newImagePaths = await _saveImagesLocally();
       } else {
-        print('📤 Новых изображений нет, пропускаю сохранение');
+        debugPrint('📤 Новых изображений нет, пропускаю сохранение');
       }
       
       // Объединяем существующие и новые пути
       final allImagePaths = [..._existingImagePaths, ...newImagePaths];
-      print('🖼️ Всего путей к изображениям: ${allImagePaths.length}');
+      debugPrint('🖼️ Всего путей к изображениям: ${allImagePaths.length}');
       
       // Проверяем существование файлов
       for (int i = 0; i < allImagePaths.length; i++) {
         final file = File(allImagePaths[i]);
         final exists = await file.exists();
-        print('   ${exists ? '✅' : '❌'} Файл $i: ${allImagePaths[i]}');
+        debugPrint('   ${exists ? '✅' : '❌'} Файл $i: ${allImagePaths[i]}');
       }
 
       // Создаем объект Memory
@@ -166,12 +166,12 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
         createdAt: widget.memory?.createdAt ?? DateTime.now(),
       );
 
-      print('🚀 Сохраняю в Firestore...');
+      debugPrint('🚀 Сохраняю в Firestore...');
       final success = await _memoryService.saveMemory(memory);
       
       if (mounted) {
         if (success) {
-          print('🎉 ВОСПОМИНАНИЕ УСПЕШНО СОХРАНЕНО!');
+          debugPrint('🎉 ВОСПОМИНАНИЕ УСПЕШНО СОХРАНЕНО!');
           
           // Показываем уведомление об успехе
           ScaffoldMessenger.of(context).showSnackBar(
@@ -191,7 +191,7 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
           widget.onSave();
           Navigator.pop(context);
         } else {
-          print('❌ MemoryService вернул false при сохранении');
+          debugPrint('❌ MemoryService вернул false при сохранении');
           
           // Удаляем сохраненные фото (откат изменений)
           for (final path in newImagePaths) {
@@ -199,10 +199,10 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
               final file = File(path);
               if (await file.exists()) {
                 await file.delete();
-                print('🗑️ Удален файл после ошибки: $path');
+                debugPrint('🗑️ Удален файл после ошибки: $path');
               }
             } catch (e) {
-              print('⚠️ Не удалось удалить файл $path: $e');
+              debugPrint('⚠️ Не удалось удалить файл $path: $e');
             }
           }
           
@@ -210,15 +210,15 @@ class _AddEditMemoryScreenState extends State<AddEditMemoryScreen> {
         }
       }
     } catch (e) {
-      print('❌ КРИТИЧЕСКАЯ ОШИБКА В _saveMemory:');
-      print('❌ Тип ошибки: ${e.runtimeType}');
-      print('❌ Сообщение: ${e.toString()}');
+      debugPrint('❌ КРИТИЧЕСКАЯ ОШИБКА В _saveMemory:');
+      debugPrint('❌ Тип ошибки: ${e.runtimeType}');
+      debugPrint('❌ Сообщение: ${e.toString()}');
       
       if (mounted) {
         _showErrorDialog('Ошибка при сохранении: ${e.toString()}');
       }
     } finally {
-      print('🔍 === КОНЕЦ ПРОЦЕССА СОХРАНЕНИЯ ===');
+      debugPrint('🔍 === КОНЕЦ ПРОЦЕССА СОХРАНЕНИЯ ===');
       if (mounted) {
         setState(() {
           _isSaving = false;

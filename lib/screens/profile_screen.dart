@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:relive_app/app_auth_provider.dart';
 import 'package:relive_app/welcome_screen.dart';
-
+import '../services/user_profile_service.dart';
+import '../models/user_profile.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,6 +15,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final UserProfileService _profileService = UserProfileService();
+  UserProfile? _userProfile;
   // final MemoryService _memoryService = MemoryService();
   // final TimeCapsuleService _capsuleService = TimeCapsuleService();
   // List<Memory> _memories = [];
@@ -23,8 +27,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     // _loadStatistics();
+     _loadUserProfile();
   }
 
+Future<void> _loadUserProfile() async {
+  final profile = await _profileService.getCurrentUserProfile();
+  if (mounted) {
+    setState(() {
+      _userProfile = profile;
+    });
+  }
+}
   // Future<void> _loadStatistics() async {
   //   // Ваш код загрузки статистики
   //   // final memories = await _memoryService.getMemories();
@@ -219,8 +232,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileHeader(User? user) {
     final email = user?.email ?? 'user@relive.com';
-    final displayName = user?.email?.split('@').first ?? 'Пользователь ReLive';
-    
+     final displayName = _userProfile?.displayName ?? 
+                      user?.displayName ?? 
+                      user?.email?.split('@').first ?? 
+                      'Пользователь ReLive';
+    final bio = _userProfile?.bio;
+
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -291,6 +309,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           
+          if (bio != null && bio.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            bio,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.white70,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+
           const SizedBox(height: 8),
           
           // Email
@@ -302,11 +333,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           
+          if (_userProfile?.birthDate != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Родился(ась): ${_formatDate(_userProfile!.birthDate!)}',
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.white70,
+            ),
+          ),
+        ],
+
           const SizedBox(height: 16),
           
           OutlinedButton(
             onPressed: () {
-              // TODO: Реализовать редактирование профиля
+           Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EditProfileScreen(
+                  initialProfile: _userProfile,
+                  onProfileUpdated: _loadUserProfile,
+                ),
+              ),
+            );
             },
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
@@ -597,7 +647,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-
+ String _formatDate(DateTime date) {
+  final months = [
+    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+  ];
+  return '${date.day} ${months[date.month - 1]} ${date.year}';
+}
 class _StatItem extends StatelessWidget {
   final String count;
   final String label;

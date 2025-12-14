@@ -24,22 +24,22 @@ class AppAuthProvider with ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      print('📝 Регистрация: $email');
+      debugPrint('📝 Регистрация: $email');
       
       final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
       
-      print('✅ Успешная регистрация: ${credential.user?.email}');
+      debugPrint('✅ Успешная регистрация: ${credential.user?.email}');
       
       _errorMessage = null;
       
     } on FirebaseAuthException catch (e) {
-      print('❌ Ошибка регистрации: ${e.code} - ${e.message}');
+      debugPrint('❌ Ошибка регистрации: ${e.code} - ${e.message}');
       _errorMessage = _getErrorMessage(e);
     } catch (e) {
-      print('❌ Неизвестная ошибка: $e');
+      debugPrint('❌ Неизвестная ошибка: $e');
       _errorMessage = 'Произошла ошибка: $e';
     } finally {
       _isLoading = false;
@@ -53,22 +53,22 @@ class AppAuthProvider with ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      print('🔐 Попытка входа: $email');
+      debugPrint('🔐 Попытка входа: $email');
       
       final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
       
-      print('✅ Успешный вход: ${credential.user?.email}');
+      debugPrint('✅ Успешный вход: ${credential.user?.email}');
       
       _errorMessage = null;
       
     } on FirebaseAuthException catch (e) {
-      print('❌ Ошибка входа: ${e.code} - ${e.message}');
+      debugPrint('❌ Ошибка входа: ${e.code} - ${e.message}');
       _errorMessage = _getErrorMessage(e);
     } catch (e) {
-      print('❌ Неизвестная ошибка: $e');
+      debugPrint('❌ Неизвестная ошибка: $e');
       _errorMessage = 'Произошла ошибка: $e';
     } finally {
       _isLoading = false;

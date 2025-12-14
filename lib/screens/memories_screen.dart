@@ -16,7 +16,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
   final MemoryService _memoryService = MemoryService();
   final TextEditingController _searchController = TextEditingController();
   late Stream<List<Memory>> _memoriesStream;
-  List<Memory> _memories = [];
+  List<Memory> _allMemories = [];
   List<Memory> _filteredMemories = [];
   bool _isSearching = false;
   bool _isSearchEmpty = false;
@@ -35,26 +35,51 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
   }
 
   void _onSearchChanged() {
+    if (!mounted) return;
+    
     final query = _searchController.text.trim().toLowerCase();
     
     if (query.isEmpty) {
-      setState(() {
-        _filteredMemories = _memories;
-        _isSearchEmpty = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _filteredMemories = _allMemories;
+          _isSearchEmpty = false;
+        });
       });
       return;
     }
 
-    final filtered = _memories.where((memory) {
+    final filtered = _allMemories.where((memory) {
       return memory.title.toLowerCase().contains(query) ||
              memory.description.toLowerCase().contains(query) ||
              _formatDate(memory.date).toLowerCase().contains(query);
     }).toList();
 
-    setState(() {
-      _filteredMemories = filtered;
-      _isSearchEmpty = filtered.isEmpty && query.isNotEmpty;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _filteredMemories = filtered;
+        _isSearchEmpty = filtered.isEmpty && query.isNotEmpty;
+      });
     });
+  }
+
+  void _updateMemoriesList(List<Memory> newMemories) {
+    _allMemories = newMemories;
+    
+    if (_isSearching && _searchController.text.isNotEmpty) {
+      final query = _searchController.text.trim().toLowerCase();
+      _filteredMemories = _allMemories.where((memory) {
+        return memory.title.toLowerCase().contains(query) ||
+               memory.description.toLowerCase().contains(query) ||
+               _formatDate(memory.date).toLowerCase().contains(query);
+      }).toList();
+      _isSearchEmpty = _filteredMemories.isEmpty && query.isNotEmpty;
+    } else {
+      _filteredMemories = _allMemories;
+      _isSearchEmpty = false;
+    }
   }
 
   void _startSearch() {
@@ -64,10 +89,10 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
   }
 
   void _stopSearch() {
+    _searchController.clear();
     setState(() {
       _isSearching = false;
-      _searchController.clear();
-      _filteredMemories = _memories;
+      _filteredMemories = _allMemories;
       _isSearchEmpty = false;
     });
   }
@@ -351,15 +376,12 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
 
               // Получаем данные (даже если они пустые)
               final allMemories = snapshot.data ?? [];
-              _memories = allMemories;
               
-              // Применяем поисковый фильтр если нужно
-              if (!_isSearching || _searchController.text.isEmpty) {
-                _filteredMemories = allMemories;
-                _isSearchEmpty = false;
-              } else {
-                _onSearchChanged();
-              }
+              // Обновляем списки через метод, который не вызывает setState в build
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _updateMemoriesList(allMemories);
+                if (mounted) setState(() {});
+              });
 
               // Если нет воспоминаний вообще
               if (allMemories.isEmpty && !_isSearching) {
@@ -372,6 +394,13 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
               if (_isSearchEmpty) {
                 return SliverFillRemaining(
                   child: _buildSearchEmptyState(),
+                );
+              }
+
+              // Если отфильтрованных воспоминаний нет (но не из-за поиска)
+              if (_filteredMemories.isEmpty) {
+                return SliverFillRemaining(
+                  child: _buildEmptyState(),
                 );
               }
 
@@ -721,8 +750,8 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child:  Image.file( // ИЗМЕНЕНИЕ ЗДЕСЬ
-                                File(memory.imagePaths[index]),
+                                child: Image.file(
+                                  File(memory.imagePaths[index]),
                                   width: 80,
                                   height: 80,
                                   fit: BoxFit.cover,

@@ -16,9 +16,9 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print("✅ Firebase успешно инициализирован");
+    debugPrint("✅ Firebase успешно инициализирован");
   } catch (e) {
-    print("❌ Ошибка инициализации Firebase: $e");
+    debugPrint("❌ Ошибка инициализации Firebase: $e");
   }
 
   runApp(const ReLiveApp());
