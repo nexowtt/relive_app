@@ -1,4 +1,3 @@
-// favorite_moments_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/memory.dart';
@@ -13,18 +12,28 @@ class FavoriteMomentsScreen extends StatefulWidget {
 
 class _FavoriteMomentsScreenState extends State<FavoriteMomentsScreen> {
   final MemoryService _memoryService = MemoryService();
-  late Stream<List<Memory>> _favoritesStream;
-
-  @override
-  void initState() {
-    super.initState();
-    _favoritesStream = _memoryService.favoriteMemoriesStream;
-  }
+  bool _isProcessingFavorite = false;
 
   Future<void> _toggleFavorite(Memory memory) async {
-    final success = await _memoryService.toggleFavorite(memory.id);
-    if (!success) {
-      _showErrorDialog('Ошибка при изменении избранного');
+    if (_isProcessingFavorite) return;
+    
+    setState(() {
+      _isProcessingFavorite = true;
+    });
+    
+    try {
+      final success = await _memoryService.toggleFavorite(memory.id);
+      if (!success) {
+        if (mounted) {
+          _showErrorDialog('Ошибка при изменении избранного');
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingFavorite = false;
+        });
+      }
     }
   }
 
@@ -241,8 +250,8 @@ class _FavoriteMomentsScreenState extends State<FavoriteMomentsScreen> {
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(16),
-                                    child: Image.network(
-                                      memory.imagePaths[index],
+                                    child: Image.file( // ИЗМЕНЕНИЕ ЗДЕСЬ
+    File(memory.imagePaths[index]),
                                       width: 120,
                                       height: 120,
                                       fit: BoxFit.cover,
@@ -301,29 +310,43 @@ class _FavoriteMomentsScreenState extends State<FavoriteMomentsScreen> {
                       color: Colors.transparent,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: () {
-                          _toggleFavorite(memory);
-                          Navigator.of(context).pop();
+                        onTap: () async {
+                          // ВАЖНО: сначала вызываем toggleFavorite, потом закрываем диалог
+                          await _toggleFavorite(memory);
+                          if (mounted) {
+                            Navigator.of(context).pop();
+                          }
                         },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(
-                              Icons.favorite_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Убрать из избранного',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                        child: _isProcessingFavorite
+                            ? const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                  ),
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(
+                                    Icons.favorite_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Убрать из избранного',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
@@ -377,17 +400,29 @@ class _FavoriteMomentsScreenState extends State<FavoriteMomentsScreen> {
           ),
           
           StreamBuilder<List<Memory>>(
-            stream: _favoritesStream,
+            stream: _memoryService.favoriteMemoriesStream,
             builder: (context, snapshot) {
+              // Обработка ошибки
               if (snapshot.hasError) {
                 return SliverFillRemaining(
                   child: Center(
-                    child: Text('Ошибка: ${snapshot.error}'),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red, size: 50),
+                        const SizedBox(height: 16),
+                        const Text('Ошибка загрузки избранных'),
+                        const SizedBox(height: 8),
+                        Text(snapshot.error.toString()),
+                      ],
+                    ),
                   ),
                 );
               }
 
-              if (snapshot.connectionState == ConnectionState.waiting) {
+              // Показываем индикатор загрузки только при первом запуске
+              if (snapshot.connectionState == ConnectionState.waiting && 
+                  snapshot.data == null) {
                 return SliverFillRemaining(
                   child: Center(
                     child: CircularProgressIndicator(
@@ -397,26 +432,29 @@ class _FavoriteMomentsScreenState extends State<FavoriteMomentsScreen> {
                 );
               }
 
-              final memories = snapshot.data ?? [];
+              // Получаем данные (даже если они пустые)
+              final favoriteMemories = snapshot.data ?? [];
 
-              if (memories.isEmpty) {
+              // Если нет избранных воспоминаний
+              if (favoriteMemories.isEmpty) {
                 return SliverFillRemaining(
                   child: _buildEmptyState(),
                 );
               }
 
+              // Показываем список избранных воспоминаний
               return SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final memory = memories[index];
+                      final memory = favoriteMemories[index];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
                         child: _buildMemoryCard(memory),
                       );
                     },
-                    childCount: memories.length,
+                    childCount: favoriteMemories.length,
                   ),
                 ),
               );
@@ -536,7 +574,6 @@ class _FavoriteMomentsScreenState extends State<FavoriteMomentsScreen> {
           ),
           child: Stack(
             children: [
-              // Декоративные элементы
               Positioned(
                 top: -20,
                 right: -20,
@@ -567,7 +604,6 @@ class _FavoriteMomentsScreenState extends State<FavoriteMomentsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Заголовок и сердечко
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -614,7 +650,6 @@ class _FavoriteMomentsScreenState extends State<FavoriteMomentsScreen> {
                     
                     const SizedBox(height: 16),
                     
-                    // Описание (только превью)
                     Text(
                       memory.description.length > 120 
                           ? '${memory.description.substring(0, 120)}...' 
@@ -630,51 +665,51 @@ class _FavoriteMomentsScreenState extends State<FavoriteMomentsScreen> {
                     
                     const SizedBox(height: 16),
                     
-                    // Фотографии (превью)
-                    if (memory.imagePaths.isNotEmpty) ...[
-                      SizedBox(
-                        height: 80,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: memory.imagePaths.length,
-                          itemBuilder: (context, index) {
-                            return Container(
-                              width: 80,
-                              height: 80,
-                              margin: const EdgeInsets.only(right: 12),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                color: Colors.white.withOpacity(0.2),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  memory.imagePaths[index],
-                                  width: 80,
-                                  height: 80,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Center(
-                                      child: Icon(
-                                        Icons.photo_rounded,
-                                        color: Colors.white,
-                                        size: 30,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
+                    // В методе _buildMemoryCard замените Image.network на Image.file:
+
+if (memory.imagePaths.isNotEmpty) ...[
+  SizedBox(
+    height: 80,
+    child: ListView.builder(
+      scrollDirection: Axis.horizontal,
+      itemCount: memory.imagePaths.length,
+      itemBuilder: (context, index) {
+        return Container(
+          width: 80,
+          height: 80,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white.withOpacity(0.2),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.file(
+              File(memory.imagePaths[index]), // ИЗМЕНЕНИЕ ЗДЕСЬ
+              width: 80,
+              height: 80,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const Center(
+                  child: Icon(
+                    Icons.photo_rounded,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    ),
+  ),
+  const SizedBox(height: 12),
+],
                     
-                    // Подсказка для просмотра
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: const [

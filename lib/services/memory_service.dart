@@ -1,7 +1,8 @@
 // services/memory_service.dart
+import 'package:rxdart/rxdart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import '../models/memory.dart';
 
 class MemoryService {
@@ -42,7 +43,7 @@ class MemoryService {
         );
       }).toList();
     } catch (e) {
-      print('❌ Ошибка загрузки воспоминаний из Firebase: $e');
+      debugPrint('❌ Ошибка загрузки воспоминаний из Firebase: $e');
       return [];
     }
   }
@@ -63,7 +64,7 @@ class MemoryService {
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
-        print('❌ Пользователь не авторизован');
+        debugPrint('❌ Пользователь не авторизован');
         return false;
       }
 
@@ -71,7 +72,7 @@ class MemoryService {
         'title': memory.title,
         'description': memory.description,
         'date': Timestamp.fromDate(memory.date),
-        'imagePaths': memory.imagePaths, // URL изображений из Firebase Storage
+        'imagePaths': memory.imagePaths,
         'isFavorite': memory.isFavorite,
         'userId': userId,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -81,16 +82,16 @@ class MemoryService {
         // Создаем новое воспоминание
         memoryData['createdAt'] = FieldValue.serverTimestamp();
         await _getUserMemoriesCollection().add(memoryData);
-        print('✅ Память создана для пользователя ${_auth.currentUser?.email}');
+        debugPrint('✅ Память создана для пользователя ${_auth.currentUser?.email}');
       } else {
         // Обновляем существующее
         await _getUserMemoriesCollection().doc(memory.id).update(memoryData);
-        print('✅ Память обновлена');
+        debugPrint('✅ Память обновлена');
       }
       
       return true;
     } catch (e) {
-      print('❌ Ошибка сохранения памяти в Firebase: $e');
+      debugPrint('❌ Ошибка сохранения памяти в Firebase: $e');
       return false;
     }
   }
@@ -99,67 +100,73 @@ class MemoryService {
   Future<bool> deleteMemory(String id) async {
     try {
       await _getUserMemoriesCollection().doc(id).delete();
-      print('✅ Память удалена');
+      debugPrint('✅ Память удалена');
       return true;
     } catch (e) {
-      print('❌ Ошибка удаления памяти из Firebase: $e');
+      debugPrint('❌ Ошибка удаления памяти из Firebase: $e');
       return false;
     }
   }
 
-  // Исправленный метод toggleFavorite в memory_service.dart
-Future<bool> toggleFavorite(String id) async {
-  try {
-    // Получаем документ
-    final docRef = _getUserMemoriesCollection().doc(id);
-    final doc = await docRef.get();
-    
-    if (doc.exists) {
-      // Явно приводим тип
-      final data = doc.data() as Map<String, dynamic>?;
-      final currentValue = data?['isFavorite'] ?? false;
+  // Переключаем избранное
+  Future<bool> toggleFavorite(String id) async {
+    try {
+      // Получаем документ
+      final docRef = _getUserMemoriesCollection().doc(id);
+      final doc = await docRef.get();
       
-      // Обновляем поле isFavorite
-      await docRef.update({
-        'isFavorite': !currentValue,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      if (doc.exists) {
+        // Явно приводим тип
+        final data = doc.data() as Map<String, dynamic>?;
+        final currentValue = data?['isFavorite'] ?? false;
+        
+        // Обновляем поле isFavorite
+        await docRef.update({
+          'isFavorite': !currentValue,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        
+        debugPrint('✅ Избранное переключено для документа $id: ${!currentValue}');
+        return true;
+      }
       
-      print('✅ Избранное переключено для документа $id: ${!currentValue}');
-      return true;
+      debugPrint('❌ Документ с ID $id не найден');
+      return false;
+    } catch (e) {
+      debugPrint('Ошибка при переключении избранного: $e');
+      return false;
     }
-    
-    print('❌ Документ с ID $id не найден');
-    return false;
-  } catch (e) {
-    debugPrint('Ошибка при переключении избранного: $e');
-    return false;
   }
-}
-
+  
   // Получаем Stream для реального времени (все воспоминания)
-  Stream<List<Memory>> get memoriesStream {
+  Stream<List<Memory>> get allMemoriesStream {
     return _getUserMemoriesCollection()
         .orderBy('date', descending: true)
         .snapshots()
         .handleError((error) {
-          print('❌ Ошибка в memoriesStream: $error');
-          return Stream.empty();
+          debugPrint('❌ Ошибка в allMemoriesStream: $error');
+          // Возвращаем пустой стрим вместо падения
+          return Stream<List<Memory>>.empty();
         })
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return Memory(
-          id: doc.id,
-          title: data['title'] ?? '',
-          description: data['description'] ?? '',
-          date: (data['date'] as Timestamp).toDate(),
-          imagePaths: List<String>.from(data['imagePaths'] ?? []),
-          isFavorite: data['isFavorite'] ?? false,
-          createdAt: (data['createdAt'] as Timestamp).toDate(),
-        );
-      }).toList();
-    });
+          // Всегда возвращаем список, даже если он пустой
+          final List<Memory> memories = snapshot.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return Memory(
+              id: doc.id,
+              title: data['title'] ?? '',
+              description: data['description'] ?? '',
+              date: (data['date'] as Timestamp).toDate(),
+              imagePaths: List<String>.from(data['imagePaths'] ?? []),
+              isFavorite: data['isFavorite'] ?? false,
+              createdAt: (data['createdAt'] as Timestamp).toDate(),
+            );
+          }).toList();
+          
+          debugPrint('📊 allMemoriesStream emitted ${memories.length} memories');
+          return memories;
+        })
+        .startWith([]); // Важно: начальное значение для немедленного отображения
   }
 
   // Получаем Stream для избранных воспоминаний
@@ -169,23 +176,29 @@ Future<bool> toggleFavorite(String id) async {
         .orderBy('date', descending: true)
         .snapshots()
         .handleError((error) {
-          print('❌ Ошибка в favoriteMemoriesStream: $error');
-          return Stream.empty();
+          debugPrint('❌ Ошибка в favoriteMemoriesStream: $error');
+          // Возвращаем пустой стрим вместо падения
+          return Stream<List<Memory>>.empty();
         })
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return Memory(
-          id: doc.id,
-          title: data['title'] ?? '',
-          description: data['description'] ?? '',
-          date: (data['date'] as Timestamp).toDate(),
-          imagePaths: List<String>.from(data['imagePaths'] ?? []),
-          isFavorite: true,
-          createdAt: (data['createdAt'] as Timestamp).toDate(),
-        );
-      }).toList();
-    });
+          // Всегда возвращаем список, даже если он пустой
+          final List<Memory> memories = snapshot.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return Memory(
+              id: doc.id,
+              title: data['title'] ?? '',
+              description: data['description'] ?? '',
+              date: (data['date'] as Timestamp).toDate(),
+              imagePaths: List<String>.from(data['imagePaths'] ?? []),
+              isFavorite: true, // Всегда true для этой коллекции
+              createdAt: (data['createdAt'] as Timestamp).toDate(),
+            );
+          }).toList();
+          
+          debugPrint('❤️ favoriteMemoriesStream emitted ${memories.length} favorite memories');
+          return memories;
+        })
+        .startWith([]); // Важно: начальное значение для немедленного отображения
   }
 
   // Получаем одно воспоминание по ID
@@ -206,7 +219,7 @@ Future<bool> toggleFavorite(String id) async {
       }
       return null;
     } catch (e) {
-      print('❌ Ошибка получения памяти по ID: $e');
+      debugPrint('❌ Ошибка получения памяти по ID: $e');
       return null;
     }
   }
@@ -214,7 +227,7 @@ Future<bool> toggleFavorite(String id) async {
   // Поиск воспоминаний по заголовку
   Stream<List<Memory>> searchMemories(String query) {
     if (query.isEmpty) {
-      return memoriesStream;
+      return allMemoriesStream;
     }
     
     return _getUserMemoriesCollection()
@@ -223,23 +236,24 @@ Future<bool> toggleFavorite(String id) async {
         .orderBy('date', descending: true)
         .snapshots()
         .handleError((error) {
-          print('❌ Ошибка в searchMemories: $error');
-          return Stream.empty();
+          debugPrint('❌ Ошибка в searchMemories: $error');
+          return Stream<List<Memory>>.empty();
         })
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return Memory(
-          id: doc.id,
-          title: data['title'] ?? '',
-          description: data['description'] ?? '',
-          date: (data['date'] as Timestamp).toDate(),
-          imagePaths: List<String>.from(data['imagePaths'] ?? []),
-          isFavorite: data['isFavorite'] ?? false,
-          createdAt: (data['createdAt'] as Timestamp).toDate(),
-        );
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return Memory(
+              id: doc.id,
+              title: data['title'] ?? '',
+              description: data['description'] ?? '',
+              date: (data['date'] as Timestamp).toDate(),
+              imagePaths: List<String>.from(data['imagePaths'] ?? []),
+              isFavorite: data['isFavorite'] ?? false,
+              createdAt: (data['createdAt'] as Timestamp).toDate(),
+            );
+          }).toList();
+        })
+        .startWith([]);
   }
 
   // Получаем воспоминания по месяцу и году
@@ -255,23 +269,24 @@ Future<bool> toggleFavorite(String id) async {
         .orderBy('date', descending: true)
         .snapshots()
         .handleError((error) {
-          print('❌ Ошибка в getMemoriesByMonth: $error');
-          return Stream.empty();
+          debugPrint('❌ Ошибка в getMemoriesByMonth: $error');
+          return Stream<List<Memory>>.empty();
         })
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return Memory(
-          id: doc.id,
-          title: data['title'] ?? '',
-          description: data['description'] ?? '',
-          date: (data['date'] as Timestamp).toDate(),
-          imagePaths: List<String>.from(data['imagePaths'] ?? []),
-          isFavorite: data['isFavorite'] ?? false,
-          createdAt: (data['createdAt'] as Timestamp).toDate(),
-        );
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return Memory(
+              id: doc.id,
+              title: data['title'] ?? '',
+              description: data['description'] ?? '',
+              date: (data['date'] as Timestamp).toDate(),
+              imagePaths: List<String>.from(data['imagePaths'] ?? []),
+              isFavorite: data['isFavorite'] ?? false,
+              createdAt: (data['createdAt'] as Timestamp).toDate(),
+            );
+          }).toList();
+        })
+        .startWith([]);
   }
 
   // Получаем количество воспоминаний
@@ -280,7 +295,7 @@ Future<bool> toggleFavorite(String id) async {
       final querySnapshot = await _getUserMemoriesCollection().get();
       return querySnapshot.docs.length;
     } catch (e) {
-      print('❌ Ошибка получения количества воспоминаний: $e');
+      debugPrint('❌ Ошибка получения количества воспоминаний: $e');
       return 0;
     }
   }
@@ -293,7 +308,7 @@ Future<bool> toggleFavorite(String id) async {
           .get();
       return querySnapshot.docs.length;
     } catch (e) {
-      print('❌ Ошибка получения количества избранных воспоминаний: $e');
+      debugPrint('❌ Ошибка получения количества избранных воспоминаний: $e');
       return 0;
     }
   }
@@ -306,7 +321,7 @@ Future<bool> toggleFavorite(String id) async {
           .get();
       return querySnapshot.docs.isNotEmpty;
     } catch (e) {
-      print('❌ Ошибка проверки наличия воспоминаний: $e');
+      debugPrint('❌ Ошибка проверки наличия воспоминаний: $e');
       return false;
     }
   }
@@ -334,7 +349,7 @@ Future<bool> toggleFavorite(String id) async {
       }
       return null;
     } catch (e) {
-      print('❌ Ошибка получения последнего воспоминания: $e');
+      debugPrint('❌ Ошибка получения последнего воспоминания: $e');
       return null;
     }
   }
@@ -349,10 +364,10 @@ Future<bool> toggleFavorite(String id) async {
         await doc.reference.delete();
       }
       
-      print('✅ Все воспоминания удалены');
+      debugPrint('✅ Все воспоминания удалены');
       return true;
     } catch (e) {
-      print('❌ Ошибка удаления всех воспоминаний: $e');
+      debugPrint('❌ Ошибка удаления всех воспоминаний: $e');
       return false;
     }
   }
@@ -387,7 +402,7 @@ Future<bool> toggleFavorite(String id) async {
         'years': memoriesByYear.keys.toList()..sort(),
       };
     } catch (e) {
-      print('❌ Ошибка получения статистики: $e');
+      debugPrint('❌ Ошибка получения статистики: $e');
       return {
         'total': 0,
         'favorites': 0,

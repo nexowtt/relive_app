@@ -65,11 +65,10 @@ class _AddTimeCapsuleScreenState extends State<AddTimeCapsuleScreen> {
     });
 
     try {
-      final capsule = TimeCapsule(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+      // Используем фабричный метод create из обновленной модели
+      final capsule = TimeCapsule.create(
         title: _titleController.text,
         message: _messageController.text,
-        creationDate: DateTime.now(),
         openDate: _selectedOpenDate,
       );
 

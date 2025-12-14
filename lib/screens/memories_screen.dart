@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/memory.dart';
 import '../services/memory_service.dart';
 import 'add_edit_memory_screen.dart';
-import 'favorite_moments_screen.dart'; // Добавлен импорт экрана избранного
+import 'favorite_moments_screen.dart';
 import 'dart:io';
 
 class MemoriesScreen extends StatefulWidget {
@@ -15,6 +15,7 @@ class MemoriesScreen extends StatefulWidget {
 class _MemoriesScreenState extends State<MemoriesScreen> {
   final MemoryService _memoryService = MemoryService();
   final TextEditingController _searchController = TextEditingController();
+  late Stream<List<Memory>> _memoriesStream;
   List<Memory> _memories = [];
   List<Memory> _filteredMemories = [];
   bool _isSearching = false;
@@ -23,7 +24,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
   @override
   void initState() {
     super.initState();
-    _loadMemories();
+    _memoriesStream = _memoryService.allMemoriesStream;
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -31,17 +32,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadMemories() async {
-    final memories = await _memoryService.getMemories();
-    if (mounted) {
-      setState(() {
-        _memories = memories;
-        _filteredMemories = memories;
-        _isSearchEmpty = false;
-      });
-    }
   }
 
   void _onSearchChanged() {
@@ -87,7 +77,9 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => AddEditMemoryScreen(
-          onSave: _loadMemories,
+          onSave: () {
+            // Обновление происходит автоматически через Stream
+          },
         ),
       ),
     );
@@ -101,13 +93,14 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
       MaterialPageRoute(
         builder: (context) => AddEditMemoryScreen(
           memory: memory,
-          onSave: _loadMemories,
+          onSave: () {
+            // Обновление происходит автоматически через Stream
+          },
         ),
       ),
     );
   }
 
-  // Добавляем метод для перехода к избранным
   void _goToFavorites() {
     if (_isSearching) return;
     
@@ -123,9 +116,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
     if (_isSearching) return;
     
     await _memoryService.toggleFavorite(memory.id);
-    if (mounted) {
-      _loadMemories();
-    }
   }
 
   Future<void> _deleteMemory(Memory memory) async {
@@ -221,9 +211,8 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
       },
     );
 
-    if (shouldDelete == true && mounted) {
+    if (shouldDelete == true) {
       await _memoryService.deleteMemory(memory.id);
-      _loadMemories();
     }
   }
 
@@ -275,7 +264,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
               if (!_isSearching)
                 Row(
                   children: [
-                    // Кнопка избранного
                     Container(
                       margin: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -294,7 +282,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                         onPressed: _goToFavorites,
                       ),
                     ),
-                    // Кнопка поиска
                     Container(
                       margin: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -319,30 +306,93 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
             pinned: true,
           ),
           
-          if (_isSearchEmpty)
-            SliverFillRemaining(
-              child: _buildSearchEmptyState(),
-            )
-          else if (_filteredMemories.isEmpty && !_isSearching)
-            SliverFillRemaining(
-              child: _buildEmptyState(),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final memory = _filteredMemories[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _buildMemoryCard(memory),
-                    );
-                  },
-                  childCount: _filteredMemories.length,
+          // Основной контент с StreamBuilder
+          StreamBuilder<List<Memory>>(
+            stream: _memoriesStream,
+            builder: (context, snapshot) {
+              // Обработка ошибки
+              if (snapshot.hasError) {
+                return SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red, size: 50),
+                        const SizedBox(height: 16),
+                        const Text('Ошибка загрузки данных'),
+                        const SizedBox(height: 8),
+                        Text(snapshot.error.toString()),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _memoriesStream = _memoryService.allMemoriesStream;
+                            });
+                          },
+                          child: const Text('Повторить'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              // Показываем индикатор загрузки только при первом запуске
+              if (snapshot.connectionState == ConnectionState.waiting && 
+                  snapshot.data == null) {
+                return SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: const Color(0xFF9D84FF),
+                    ),
+                  ),
+                );
+              }
+
+              // Получаем данные (даже если они пустые)
+              final allMemories = snapshot.data ?? [];
+              _memories = allMemories;
+              
+              // Применяем поисковый фильтр если нужно
+              if (!_isSearching || _searchController.text.isEmpty) {
+                _filteredMemories = allMemories;
+                _isSearchEmpty = false;
+              } else {
+                _onSearchChanged();
+              }
+
+              // Если нет воспоминаний вообще
+              if (allMemories.isEmpty && !_isSearching) {
+                return SliverFillRemaining(
+                  child: _buildEmptyState(),
+                );
+              }
+
+              // Если поиск не дал результатов
+              if (_isSearchEmpty) {
+                return SliverFillRemaining(
+                  child: _buildSearchEmptyState(),
+                );
+              }
+
+              // Показываем список воспоминаний
+              return SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final memory = _filteredMemories[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildMemoryCard(memory),
+                      );
+                    },
+                    childCount: _filteredMemories.length,
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
+          ),
         ],
       ),
       floatingActionButton: _isSearching ? null : _buildFloatingActionButton(),
@@ -558,7 +608,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
           ),
           child: Stack(
             children: [
-              // Декоративный элемент
               Positioned(
                 top: 0,
                 right: 0,
@@ -580,7 +629,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Заголовок и кнопка избранного
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -637,7 +685,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                     
                     const SizedBox(height: 16),
                     
-                    // Описание
                     Text(
                       memory.description,
                       maxLines: 3,
@@ -651,7 +698,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                     
                     const SizedBox(height: 16),
                     
-                    // Фотографии (превью)
                     if (memory.imagePaths.isNotEmpty) ...[
                       SizedBox(
                         height: 80,
@@ -675,8 +721,8 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.file(
-                                  File(memory.imagePaths[index]),
+                                child:  Image.file( // ИЗМЕНЕНИЕ ЗДЕСЬ
+                                File(memory.imagePaths[index]),
                                   width: 80,
                                   height: 80,
                                   fit: BoxFit.cover,
@@ -708,7 +754,6 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                       const SizedBox(height: 16),
                     ],
                     
-                    // Кнопка удаления
                     Row(
                       children: [
                         const Spacer(),
